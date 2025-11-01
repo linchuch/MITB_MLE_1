@@ -42,7 +42,7 @@ with DAG(
         task_id="model_inference",
         bash_command=(
             "cd /opt/airflow/scripts && "
-            "python3 model_inference.py --snapshotdate '{{ ds }}' --modelname 'credit_model_2024_06_01.pkl'"
+            "python3 model_inference.py --snapshotdate '{{ ds }}' --modelname 'credit_model_2024_06_01'"
         ),
     )
     end = DummyOperator(task_id="end")

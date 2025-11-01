@@ -32,7 +32,7 @@ def main(snapshotdate):
     date_str = snapshotdate
     
     # create bronze datalake for features
-    bronze, silver: "datamart/bronze/lms_loan_daily/", "datamart/silver/lms_loan_daily/"
+    bronze, silver = "datamart/bronze/lms_loan_daily/", "datamart/silver/lms_loan_daily/"
 
     if not os.path.exists(silver):
         os.makedirs(silver)

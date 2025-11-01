@@ -34,8 +34,8 @@ def main(snapshotdate):
     date_str = snapshotdate
     
     # create bronze datalake for features
-    click_bronze, click_silver = "datamart/bronze/features_clickstream/", "datamart/silver/features_clickstream/"
-    fin_bronze, fin_silver = "datamart/bronze/features_financials/", "datamart/silver/features_financials/"
+    click_bronze, click_silver = "/opt/airflow/datamart/bronze/features_clickstream/", "/opt/airflow/datamart/silver/features_clickstream/"
+    fin_bronze, fin_silver = "/opt/airflow/datamart/bronze/features_financials/", "/opt/airflow/datamart/silver/features_financials/"
 
     # 1/ clickstream
     print('\n\n---starting clickstream job---\n\n')
