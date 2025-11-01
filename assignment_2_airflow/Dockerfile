@@ -17,19 +17,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 #     mkdir -p /usr/lib/jvm/java-17-openjdk-amd64/bin && \
 #     ln -s "$(which java)" /usr/lib/jvm/java-17-openjdk-amd64/bin/java
 
-# RUN set -eux; \
-#     apt-get update; \
-#     apt-get install -y --no-install-recommends default-jdk-headless procps bash; \
-#     rm -rf /var/lib/apt/lists/*; \
-#     ln -sf /bin/bash /bin/sh; \
-#     # derive JAVA_HOME from the installed java
-#     JAVA_BIN="$(command -v java)"; \
-#     JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")"; \
-#     echo "JAVA_HOME=$JAVA_HOME"; \
-#     mkdir -p "$JAVA_HOME/bin"; \
-#     [ -f "$JAVA_HOME/bin/java" ] || ln -s "$JAVA_BIN" "$JAVA_HOME/bin/java"; \
-#     echo "export JAVA_HOME=$JAVA_HOME" >> /etc/profile.d/java.sh 
-
 # Install Java (OpenJDK 17), procps (for ps), and bash
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

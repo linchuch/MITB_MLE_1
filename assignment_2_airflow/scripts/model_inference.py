@@ -1,3 +1,5 @@
+# /opt/airflow/model_inference.py
+
 import argparse
 import os
 import glob
@@ -45,8 +47,10 @@ def main(snapshotdate, modelname):
     config["snapshot_date_str"] = snapshotdate
     config["snapshot_date"] = datetime.strptime(config["snapshot_date_str"], "%Y-%m-%d")
     config["model_name"] = modelname
-    config["model_bank_directory"] = "model_bank/"
-    config["model_artefact_filepath"] = config["model_bank_directory"] + config["model_name"]
+    # config["model_bank_directory"] = "/opt/airflow/model_bank/"
+    # config["model_artefact_filepath"] = config["model_bank_directory"] + config["model_name"]
+    config["model_bank_directory"] = os.environ.get("MODEL_BANK_DIR", "/opt/airflow/model_bank")
+    config["model_artefact_filepath"] = os.path.join(config["model_bank_directory"], config["model_name"])
     
     pprint.pprint(config)
     
@@ -101,7 +105,7 @@ def main(snapshotdate, modelname):
 
     # --- save model inference to datamart gold table ---
     # create bronze datalake
-    gold_directory = f"datamart/gold/model_predictions/{config["model_name"][:-4]}/"
+    gold_directory = f"datamart/gold/model_predictions/{config['model_name'][:-4]}/"
     print(gold_directory)
     
     if not os.path.exists(gold_directory):
