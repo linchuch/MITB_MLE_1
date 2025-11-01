@@ -1,3 +1,5 @@
+# /opt/airflow/scripts/features_bronze.py
+
 import argparse
 import os
 import glob
@@ -31,9 +33,12 @@ def main(snapshotdate):
     date_str = snapshotdate
     
     # create bronze datalake for features
-    click_csv, fin_csv: "data/feature_clickstream.csv", "data/features_financials.csv"
-    click_bronze_partition, fin_bronze_partition: "bronze_features_clickstream_", "bronze_features_financials_"
-    click_bronze_dir, fin_bronze_dir: "datamart/bronze/features_clickstream/", "datamart/bronze/features_financials/"
+    click_csv = "data/feature_clickstream.csv"
+    fin_csv = "data/features_financials.csv"
+    click_bronze_partition = "bronze_features_clickstream_"
+    fin_bronze_partition = "bronze_features_financials_"
+    click_bronze_dir = "datamart/bronze/features_clickstream/"
+    fin_bronze_dir = "datamart/bronze/features_financials/"
 
     # 1/ clickstream
     print('\n\n---starting clickstream job---\n\n')

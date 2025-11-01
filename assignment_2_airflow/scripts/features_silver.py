@@ -1,3 +1,5 @@
+# /opt/airflow/scripts/features_silver.py
+
 import argparse
 import os
 import glob
@@ -32,8 +34,8 @@ def main(snapshotdate):
     date_str = snapshotdate
     
     # create bronze datalake for features
-    click_bronze, click_silver: "datamart/bronze/features_clickstream/", "datamart/silver/features_clickstream/"
-    fin_bronze, fin_silver: "datamart/bronze/features_financials/", "datamart/silver/features_financials/"
+    click_bronze, click_silver = "datamart/bronze/features_clickstream/", "datamart/silver/features_clickstream/"
+    fin_bronze, fin_silver = "datamart/bronze/features_financials/", "datamart/silver/features_financials/"
 
     # 1/ clickstream
     print('\n\n---starting clickstream job---\n\n')
@@ -47,7 +49,7 @@ def main(snapshotdate):
     if not os.path.exists(fin_silver):
         os.makedirs(fin_silver)
 
-    S.process_silver_table_feature_clickstream(date_str, fin_bronze, fin_silver, spark)
+    S.process_silver_table_features_financials(date_str, fin_bronze, fin_silver, spark)
     
     # end spark session
     spark.stop()
