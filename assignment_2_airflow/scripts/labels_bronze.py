@@ -1,3 +1,5 @@
+# /opt/airflow/scripts/labels_bronze.py
+
 import argparse
 import os
 import glob
@@ -31,9 +33,9 @@ def main(snapshotdate):
     date_str = snapshotdate
     
     # create bronze datalake for features
-    csv = "data/lms_loan_daily.csv"
+    csv = "/opt/airflow/data/lms_loan_daily.csv"
     bronze_partition = "bronze_lms_loan_daily_"
-    bronze_dir = "datamart/bronze/lms_loan_daily/"
+    bronze_dir = "/opt/airflow/datamart/bronze/lms_loan_daily/"
 
     if not os.path.exists(bronze_dir):
         os.makedirs(bronze_dir)

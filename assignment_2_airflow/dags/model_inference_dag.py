@@ -45,6 +45,18 @@ with DAG(
             "python3 model_inference.py --snapshotdate '{{ ds }}' --modelname 'credit_model_2024_06_01'"
         ),
     )
+    plot_feature_drift = BashOperator(
+        task_id="plot_feature_drift",
+        bash_command=(
+        "cd /opt/airflow/scripts && "
+        "python3 plot_feature_drift.py "
+        "--snapshotdate '{{ ds }}' "
+        "--modelname 'credit_model_2024_06_01' "
+        "--datamart_dir '/opt/airflow/datamart' "
+        "--model_bank_dir '/opt/airflow/model_bank'"
+        ),
+    )
+
     end = DummyOperator(task_id="end")
 
-    start >> bronze >> silver >> gold >> infer >> end
+    start >> bronze >> silver >> gold >> infer >> plot_feature_drift >> end

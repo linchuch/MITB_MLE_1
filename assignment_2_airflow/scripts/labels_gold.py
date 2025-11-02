@@ -1,3 +1,5 @@
+# /opt/airflow/scripts/labels_gold.py
+
 import argparse
 import os
 import glob
@@ -32,12 +34,12 @@ def main(snapshotdate):
     date_str = snapshotdate
     
     # create bronze datalake for features
-    silver, gold = "datamart/silver/lms_loan_daily/", "datamart/gold/label_store/"
+    silver, gold = "/opt/airflow/datamart/silver/lms_loan_daily/", "/opt/airflow/datamart/gold/label_store/"
 
     if not os.path.exists(gold):
         os.makedirs(gold)
 
-    G.process_labels_gold_table(date_str, silver, gold, spark)
+    G.process_labels_gold_table(date_str, silver, gold, spark, 30, 6)
     
     # end spark session
     spark.stop()

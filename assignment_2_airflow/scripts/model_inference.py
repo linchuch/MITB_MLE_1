@@ -1,183 +1,4 @@
-# # /opt/airflow/model_inference.py
-
-# import argparse
-# import os
-# import glob
-# import pandas as pd
-# import pickle
-# import json
-# import matplotlib.pyplot as plt
-# import numpy as np
-# import random
-# from datetime import datetime, timedelta
-# from dateutil.relativedelta import relativedelta
-# import pprint
-# import pyspark
-# import pyspark.sql.functions as F
-
-# from pyspark.sql.functions import col
-# from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
-
-# from sklearn.model_selection import train_test_split
-# from sklearn.preprocessing import StandardScaler
-
-# import xgboost as xgb
-# from sklearn.model_selection import RandomizedSearchCV
-# from sklearn.metrics import make_scorer, f1_score, roc_auc_score
-# from sklearn.datasets import make_classification
-# from sklearn.model_selection import train_test_split
-
-
-# # to call this script: python model_train.py --snapshotdate "2024-09-01"
-
-# def main(snapshotdate, modelname):
-#     print('\n\n---starting job---\n\n')
-    
-#     # Initialize SparkSession
-#     spark = pyspark.sql.SparkSession.builder \
-#         .appName("dev") \
-#         .master("local[*]") \
-#         .getOrCreate()
-    
-#     # Set log level to ERROR to hide warnings
-#     spark.sparkContext.setLogLevel("ERROR")
-
-
-#     # --- helper functions ---
-#     def hist_proportions(values, bin_edges):
-#         counts, _ = np.histogram(values, bins=bin_edges)
-#         total = counts.sum()
-#     return (counts / total).tolist() if total > 0 else [0.0] * (len(bin_edges)-1)
-
-#     def psi_from_bins(expected_hist, actual_hist, eps=1e-9):
-#         e = np.clip(np.array(expected_hist, dtype=float), eps, 1.0)
-#         a = np.clip(np.array(actual_hist,   dtype=float), eps, 1.0)
-#         e, a = e/e.sum(), a/a.sum()
-#         return float(np.sum((a - e) * np.log(a / e)))
-    
-#     def series_stats(s):
-#         s = pd.to_numeric(s, errors="coerce")
-#         return {
-#             "n": int(s.notna().sum()),
-#             "missing_rate": float(1 - s.notna().mean()),
-#             "mean": float(s.mean()) if s.notna().any() else None,
-#             "std": float(s.std())  if s.notna().any() else None,
-#             "min": float(s.min())  if s.notna().any() else None,
-#             "max": float(s.max())  if s.notna().any() else None,
-#             "p50": float(s.quantile(0.5)) if s.notna().any() else None
-#         }
-    
-#     # --- set up config ---
-#     config = {}
-#     config["snapshot_date_str"] = snapshotdate
-#     config["snapshot_date"] = datetime.strptime(config["snapshot_date_str"], "%Y-%m-%d")
-#     config["model_name"] = modelname
-#     config["model_bank_directory"] = "/opt/airflow/model_bank/"
-#     config["model_artefact_filepath"] = config["model_bank_directory"] + config["model_name"]
-
-#     pprint.pprint(config)
-    
-
-#     # --- load model artefact from model bank ---
-#     # Load the model from the pickle file
-
-#     # with open(config["model_artefact_filepath"], 'rb') as file:
-#     #     model_artefact = pickle.load(file)
-    
-#     # print("Model loaded successfully! " + config["model_artefact_filepath"])
-
-#     # load model from json
-#     with open(os.path.join(config["model_bank_directory"], f"{modelname}_scaler.json")) as f:
-#         s = json.load(f)
-#     feat_order = s["feature_order"]
-#     mean  = np.array(s["mean"], dtype=float)
-#     scale = np.where(np.array(s["scale"], dtype=float) == 0.0, 1.0, np.array(s["scale"], dtype=float))
-#     print("Loaded scaler!")
-
-#     # --- load feature store ---
-#     feature_location = "data/feature_clickstream.csv"
-    
-#     # Load CSV into DataFrame - connect to feature store
-#     features_store_sdf = spark.read.csv(feature_location, header=True, inferSchema=True)
-#     # print("row_count:",features_store_sdf.count())
-    
-    
-#     # extract feature store
-#     features_sdf = features_store_sdf.filter((col("snapshot_date") == config["snapshot_date"]))
-#     print("extracted features_sdf", features_sdf.count(), config["snapshot_date"])
-    
-#     features_pdf = features_sdf.toPandas()
-
-
-#     # --- preprocess data for modeling ---
-#     # prepare X_inference
-#     # feature_cols = [fe_col for fe_col in features_pdf.columns if fe_col.startswith('fe_')]
-#     # X_inference = features_pdf[feature_cols]
-
-#     # # apply transformer - standard scaler
-#     # transformer_stdscaler = model_artefact["preprocessing_transformers"]["stdscaler"]
-#     # X_inference = transformer_stdscaler.transform(X_inference)
-    
-#     # print('X_inference', X_inference.shape[0])
-
-
-#     # prepare X_inference in the same order
-#     X_inference = features_pdf[feat_order].to_numpy(dtype=float)
-#     X_inference_std = (X_inference - mean) / scale
-
-
-#     # --- model prediction inference ---
-#     # # load model
-#     # model = model_artefact["model"]
-    
-#     # # predict model
-#     # y_inference = model.predict_proba(X_inference)[:, 1]
-
-#     # 2) Load booster JSON and predict
-#     bst = xgb.Booster()
-#     bst.load_model(os.path.join(config["model_artefact_filepath"], f"_booster.json"))
-#     y_inference = bst.predict(xgb.DMatrix(X_inference_std))
-    
-#     # prepare output
-#     y_inference_pdf = features_pdf[["Customer_ID","snapshot_date"]].copy()
-#     y_inference_pdf["model_name"] = config["model_name"]
-#     y_inference_pdf["model_predictions"] = y_inference
-    
-
-#     # --- save model inference to datamart gold table ---
-#     # create bronze datalake
-#     gold_directory = f"datamart/gold/model_predictions/{config['model_name'][:-4]}/"
-#     print(gold_directory)
-    
-#     if not os.path.exists(gold_directory):
-#         os.makedirs(gold_directory)
-    
-#     # save gold table - IRL connect to database to write
-#     partition_name = config["model_name"][:-4] + "_predictions_" + config["snapshot_date_str"].replace('-','_') + '.parquet'
-#     filepath = gold_directory + partition_name
-#     spark.createDataFrame(y_inference_pdf).write.mode("overwrite").parquet(filepath)
-#     # df.toPandas().to_parquet(filepath,
-#     #           compression='gzip')
-#     print('saved to:', filepath)
-
-    
-#     # --- end spark session --- 
-#     spark.stop()
-    
-#     print('\n\n---completed job---\n\n')
-
-
-# if __name__ == "__main__":
-#     # Setup argparse to parse command-line arguments
-#     parser = argparse.ArgumentParser(description="run job")
-#     parser.add_argument("--snapshotdate", type=str, required=True, help="YYYY-MM-DD")
-#     parser.add_argument("--modelname", type=str, required=True, help="model_name")
-    
-#     args = parser.parse_args()
-    
-#     # Call main with arguments explicitly passed
-#     main(args.snapshotdate, args.modelname)
-
+# /opt/airflow/model_inference.py
 
 import argparse
 import os
@@ -344,8 +165,19 @@ def main(snapshotdate, modelname):
         })
 
     # top feature drift
+    # feature_bins, feature_ref_hists, feature_stats = {}, {}, {}
+    # X_train_df = X_train if hasattr(X_train, "columns") else pd.DataFrame(X_train_processed, columns=feature_names)
+    # for feat, _ in top_features:
+    #     s = pd.to_numeric(X_train_df[feat], errors="coerce")
+    #     bins = make_bins_from_quantiles(s)
+    #     feature_bins[feat] = bins.tolist()
+    #     feature_ref_hists[feat] = hist_proportions(s.values, bins)
+    #     feature_stats[feat] = series_stats(s)
+
+
     f_bins = drift_base.get("feature_bins", {})
     f_refh = drift_base.get("feature_ref_hists", {})
+
     for feat in top_feats:
         if feat not in features_pdf.columns:
             continue
@@ -353,14 +185,20 @@ def main(snapshotdate, modelname):
             continue
         bins = f_bins[feat]
         ref_hist = f_refh[feat]
-        cur_hist = hist_proportions(pd.to_numeric(features_pdf[feat], errors="coerce").values, bins)
+
+        s = pd.to_numeric(features_pdf[feat], errors="coerce").values
+        cur_hist = hist_proportions(s, bins)
         psi_val = psi_from_bins(ref_hist, cur_hist)
+
         mon_rows.append({
             "model_name": model_base,
             "snapshot_date": config["snapshot_date_str"],
             "metric_scope": "feature",
             "feature": feat,
             "psi": psi_val,
+            "bins": json.dumps([float(b) for b in bins]),          # NEW (optional but handy)
+            "ref_hist": json.dumps([float(x) for x in ref_hist]),  # NEW (optional)
+            "cur_hist": json.dumps([float(x) for x in cur_hist]),  # NEW ← store this!
             "stats": json.dumps(series_stats(features_pdf[feat])),
         })
 
